@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0f172a" />
+<title>Private Voice Room · P2P</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: radial-gradient(circle at 20% 20%, #1e293b, #0f172a 70%);
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-x: hidden;
+  }
+  .card {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(30, 41, 59, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 1.75rem;
+    padding: 1.75rem 1.5rem;
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub { font-size: 0.78rem; color: #94a3b8; margin-bottom: 1rem; }
+  .lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 1.25rem;
+  }
+  label {
+    display: block;
+    text-align: left;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.03em;
+  }
+  input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.7);
+    color: #e2e8f0;
+    font-size: 1rem;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+    margin-bottom: 0.9rem;
+    font-family: inherit;
+  }
+  input:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+  }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 3rem; }
+  .pw-toggle {
+    position: absolute;
+    right: 0.6rem;
+    top: 0.6rem;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.5rem;
+  }
+  .pw-toggle:hover { color: #e2e8f0; background: rgba(148,163,184,0.1); }
+
+  .btn-row { display: flex; gap: 0.55rem; margin-top: 0.4rem; }
+  button.btn {
+    flex: 1;
+    padding: 0.85rem 0.6rem;
+    border-radius: 0.85rem;
+    border: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s, opacity 0.2s;
+    font-family: inherit;
+  }
+  .btn-join {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    box-shadow: 0 10px 20px -8px rgba(99, 102, 241, 0.6);
+  }
+  .btn-join:hover:not(:disabled) { transform: translateY(-2px); }
+  .btn-hang {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+  }
+  .btn-mute {
+    background: rgba(148, 163, 184, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    flex: 0 0 56px;
+    padding: 0.85rem 0;
+    font-size: 1.1rem;
+  }
+  .btn-mute.muted {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.45);
+  }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  .status {
+    margin-top: 1.25rem;
+    padding: 0.9rem;
+    border-radius: 0.9rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+  }
+  .status-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #64748b; flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .dot.connecting { background: #f59e0b; animation: pulse 1.2s infinite; }
+  .dot.connected  { background: #22c55e; animation: pulse 1.6s infinite; }
+  .dot.error      { background: #ef4444; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+    70%  { box-shadow: 0 0 0 10px transparent; opacity: 0.9; }
+    100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+  }
+  .meter {
+    margin-top: 0.8rem;
+    height: 8px;
+    background: rgba(148, 163, 184, 0.15);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .meter-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+    transition: width 0.1s linear;
+  }
+  .footer {
+    margin-top: 1.2rem;
+    font-size: 0.7rem;
+    color: #64748b;
+    line-height: 1.55;
+  }
+  .footer b { color: #94a3b8; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔒 Private Voice Room</h1>
+    <p class="sub">Same ID + same password on both phones</p>
+    <div class="lock-badge">🔐 P2P audio · TURN relay enabled</div>
+
+    <label for="roomId">Room ID</label>
+    <input id="roomId" type="text" placeholder="e.g. mohamed-egypt-room" autocomplete="off" autocapitalize="off" spellcheck="false" />
+
+    <label for="password">Password</label>
+    <div class="pw-wrap">
+      <input id="password" type="password" placeholder="Shared secret" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <button id="pwToggle" class="pw-toggle" type="button" title="Show/hide">👁️</button>
+    </div>
+
+    <div class="btn-row">
+      <button id="joinBtn" class="btn btn-join">Join room</button>
+      <button id="muteBtn" class="btn btn-mute" disabled title="Mute">🎤</button>
+      <button id="hangBtn" class="btn btn-hang" disabled>Hang up</button>
+    </div>
+
+    <div class="status">
+      <div class="status-line">
+        <span id="dot" class="dot"></span>
+        <span id="statusText">Idle</span>
+      </div>
+      <div class="meter" title="Your mic level">
+        <div id="meterFill" class="meter-fill"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Both phones must enter the <b>same Room ID</b> and <b>same Password</b>.<br>
+      Keep this tab open · allow microphone access.
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // ---------- DOM ----------
+    const roomInput  = document.getElementById('roomId');
+    const pwInput    = document.getElementById('password');
+    const pwToggle   = document.getElementById('pwToggle');
+    const joinBtn    = document.getElementById('joinBtn');
+    const muteBtn    = document.getElementById('muteBtn');
+    const hangBtn    = document.getElementById('hangBtn');
+    const dot        = document.getElementById('dot');
+    const statusText = document.getElementById('statusText');
+    const meterFill  = document.getElementById('meterFill');
+
+    // ---------- State ----------
+    let peer = null;
+    let currentCall = null;
+    let localStream = null;
+    let audioEl = null;
+    let audioCtx = null, analyser = null, meterRAF = null;
+    let dialRetryTimer = null;
+    let wakeLock = null;
+    let isMuted = false;
+    let preferredId = null, fallbackId = null;
+
+    // ---------- ICE servers (STUN + TURN) ----------
+    // TURN is REQUIRED for phone ↔ phone across countries on mobile data.
+    const ICE_SERVERS = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      // OpenRelay public TURN — free, works for testing
+      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+
+    // ---------- Helper ----------
+    const setStatus = (text, cls = '') => {
+      statusText.textContent = text;
+      dot.className = 'dot ' + cls;
+    };
+
+    // ---------- Derive two PeerJS IDs from room+password ----------
+    const deriveIds = async (roomId, password) => {
+      const enc = new TextEncoder();
+      const data = enc.encode(roomId + '::' + password + '::v2');
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      const hex = [...new Uint8Array(buf)]
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      return [
+        'p2p-' + hex.slice(0, 24),
+        'p2p-' + hex.slice(24, 48)
+      ];
+    };
+
+    // ---------- Remote audio ----------
+    const ensureAudioEl = () => {
+      if (!audioEl) {
+        audioEl = document.createElement('audio');
+        audioEl.autoplay = true;
+        audioEl.playsInline = true;
+        audioEl.setAttribute('playsinline', '');
+        document.body.appendChild(audioEl);
+      }
+      return audioEl;
+    };
+    const playRemote = (stream) => {
+      const el = ensureAudioEl();
+      el.srcObject = stream;
+      el.play().catch(err => console.warn('Remote play blocked:', err));
+    };
+
+    // ---------- Mic meter ----------
+    const startMeter = (stream) => {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          if (!analyser) return;
+          analyser.getByteFrequencyData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) sum += data[i];
+          const avg = sum / data.length;
+          meterFill.style.width = Math.min(100, (avg / 128) * 100) + '%';
+          meterRAF = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch (e) { console.warn('Meter error', e); }
+    };
+    const stopMeter = () => {
+      if (meterRAF) cancelAnimationFrame(meterRAF);
+      meterRAF = null;
+      meterFill.style.width = '0%';
+      if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx = null; }
+      analyser = null;
+    };
+
+    // ---------- Mic ----------
+    const getMic = async () => {
+      if (localStream) return localStream;
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false
+      });
+      startMeter(localStream);
+      return localStream;
+    };
+
+    // ---------- Wake Lock ----------
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+      } catch (e) { /* ignore */ }
+    };
+    const releaseWakeLock = () => {
+      if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock = null; }
+    };
+
+    // ---------- Cleanup ----------
+    const cleanup = (destroyPeer = true) => {
+      if (dialRetryTimer) { clearTimeout(dialRetryTimer); dialRetryTimer = null; }
+      if (currentCall) { try { currentCall.close(); } catch(e){} currentCall = null; }
+      if (destroyPeer && peer) { try { peer.destroy(); } catch(e){} peer = null; }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      if (audioEl) audioEl.srcObject = null;
+      stopMeter();
+      releaseWakeLock();
+      isMuted = false;
+      muteBtn.classList.remove('muted');
+      muteBtn.textContent = '🎤';
+      muteBtn.disabled = true;
+      hangBtn.disabled = true;
+      joinBtn.disabled = false;
+      roomInput.disabled = false;
+      pwInput.disabled = false;
+    };
+
+    // ---------- Dial target ----------
+    const tryDial = (target) => {
+      if (!peer || peer.destroyed) return;
+      if (currentCall && currentCall.open) return;
+      if (peer.id === target) return;
+      try {
+        const call = peer.call(target, localStream);
+        if (call) {
+          setStatus(`Ringing peer… (may take 10–20s over mobile data)`, 'connecting');
+          wireCall(call);
+        }
+      } catch (e) { console.warn('dial error', e); }
+    };
+
+    // ---------- Wire a call ----------
+    const wireCall = (call) => {
+      currentCall = call;
+      call.on('stream', (remoteStream) => {
+        playRemote(remoteStream);
+        setStatus('🔊 Connected — you can talk now', 'connected');
+        requestWakeLock();
+      });
+      call.on('close', () => {
+        setStatus('Call ended', '');
+        cleanup();
+      });
+      call.on('error', (err) => {
+        console.warn('Call error:', err);
+        // Retry — the other side might still be registering
+        if (peer && !peer.destroyed) {
+          setTimeout(() => tryDial(preferredId), 2500);
+        }
+      });
+    };
+
+    // ---------- Attach peer handlers ----------
+    const attachPeerHandlers = (peerInstance) => {
+      peerInstance.on('call', async (call) => {
+        setStatus('Incoming call — answering…', 'connecting');
+        try {
+          const stream = await getMic();
+          call.answer(stream);
+          wireCall(call);
+        } catch (e) {
+          setStatus('Failed to answer: ' + e.message, 'error');
+        }
+      });
+
+      peerInstance.on('error', (err) => {
+        console.warn('Peer error:', err.type);
+        if (err.type === 'unavailable-id') {
+          // Preferred taken → switch to fallback
+          if (peerInstance.id !== fallbackId && fallbackId) {
+            try { peerInstance.destroy(); } catch(e){}
+            startPeer(fallbackId);
+          }
+        } else if (err.type === 'peer-unavailable') {
+          // The other side isn't online yet — dial loop handles retries
+        } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+          setStatus('Network hiccup — retrying…', 'connecting');
+        } else {
+          setStatus('Error: ' + err.type, 'error');
+        }
+      });
+    };
+
+    // ---------- Start Peer with a given ID ----------
+    const startPeer = (idToUse) => {
+      peer = new Peer(idToUse, {
+        debug: 0,
+        config: { iceServers: ICE_SERVERS }
+      });
+
+      attachPeerHandlers(peer);
+
+      peer.on('open', (myId) => {
+        const otherId = (myId === preferredId) ? fallbackId : preferredId;
+
+        setStatus('Online · waiting for peer to join…', 'connecting');
+        hangBtn.disabled = false;
+        muteBtn.disabled = false;
+
+        // Continuous dial loop
+        const dialLoop = () => {
+          if (!peer || peer.destroyed) return;
+          if (currentCall && currentCall.open) return;
+          tryDial(otherId);
+          dialRetryTimer = setTimeout(dialLoop, 3000);
+        };
+        dialLoop();
+      });
+    };
+
+    // ---------- Join ----------
+    const join = async () => {
+      const roomId = roomInput.value.trim();
+      const password = pwInput.value;
+
+      if (!roomId)     { setStatus('Enter a Room ID', 'error'); return; }
+      if (!password)   { setStatus('Enter a Password', 'error'); return; }
+      if (!window.crypto?.subtle) {
+        setStatus('Browser not supported — needs HTTPS', 'error'); return;
+      }
+
+      joinBtn.disabled = true;
+      roomInput.disabled = true;
+      pwInput.disabled = true;
+
+      setStatus('Requesting microphone…', 'connecting');
+      try { await getMic(); }
+      catch (err) {
+        setStatus('Microphone denied — please allow mic access', 'error');
+        joinBtn.disabled = false;
+        roomInput.disabled = false;
+        pwInput.disabled = false;
+        return;
+      }
+
+      setStatus('Deriving secure room key…', 'connecting');
+      const ids = await deriveIds(roomId, password);
+      preferredId = ids[0];
+      fallbackId  = ids[1];
+
+      setStatus('Connecting to signaling server…', 'connecting');
+      startPeer(preferredId);
+    };
+
+    // ---------- Mute ----------
+    const toggleMute = () => {
+      if (!localStream) return;
+      const track = localStream.getAudioTracks()[0];
+      if (!track) return;
+      isMuted = !isMuted;
+      track.enabled = !isMuted;
+      muteBtn.classList.toggle('muted', isMuted);
+      muteBtn.textContent = isMuted ? '🔇' : '🎤';
+      muteBtn.title = isMuted ? 'Unmute' : 'Mute';
+    };
+
+    // ---------- Hang ----------
+    const hangup = () => {
+      setStatus('Hanging up…', '');
+      cleanup();
+      setStatus('Idle', '');
+    };
+
+    // ---------- Events ----------
+    joinBtn.addEventListener('click', join);
+    muteBtn.addEventListener('click', toggleMute);
+    hangBtn.addEventListener('click', hangup);
+    pwToggle.addEventListener('click', () => {
+      pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+      pwToggle.textContent = pwInput.type === 'password' ? '👁️' : '🙈';
+    });
+    [roomInput, pwInput].forEach(el => el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !joinBtn.disabled) join();
+    }));
+
+    // Re-acquire wake lock when page becomes visible again
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && currentCall && currentCall.open) {
+        requestWakeLock();
+      }
+    });
+
+    window.addEventListener('beforeunload', () => cleanup());
+  })();
+  </script>
+</body>
+</html>
